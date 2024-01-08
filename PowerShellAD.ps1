@@ -1,3 +1,7 @@
+$global:pathSelected = ""
+$global:pathSelectedFormat = ""
+$global:nameOrganizational = ""
+
 #Menu Principal
 function menuMain {
     Clear-Host
@@ -31,16 +35,24 @@ function menuAddUsers {
     for ($i = 0; $i -lt $ousRoot.Length; $i++) {
         $plus = $i + 1
         $nameOU = $ousRoot[$i].Name
-        Write-Host "$plus - $nameOU"
+        Write-Host "$plus) $nameOU"
     }
+    $plusPlas = $plus + 1
+    Write-Host "$plusPlas) Volver al Menu"
     Write-Host ""
     $option = Read-Host "Ingrese Valor"
-    $plus = $option - 1;
-    $pathOU = $ousRoot[$plus].DistinguishedName
-    $nameOrganizational = $ousRoot[$plus].Name
-    $ousRoot = @(Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $pathOU -SearchScope OneLevel | Select-Object Name, DistinguishedName)
-    while ($ousRoot.Length -gt 0) {
-        menuAddUsersSub -path $pathOU -nameOraganizational $nameOrganizational
+    if($option -eq $plusPlas) {
+        menuMain
+    }else {
+        $plus = $option - 1;
+        $pathOU = $ousRoot[$plus].DistinguishedName
+        $nameOrganizational = $ousRoot[$plus].Name
+        $ousRoot = @(Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $pathOU -SearchScope OneLevel | Select-Object Name, DistinguishedName)
+        while ($ousRoot.Length -gt 0) {
+            $global:pathSelected = $pathOU
+            $global:nameOrganizational = $nameOrganizational
+            menuAddUsersSub -path $pathOU -nameOraganizational $nameOrganizational
+        }
     }
 }
 function menuAddUsersSub {
@@ -58,19 +70,42 @@ function menuAddUsersSub {
     for ($i = 0; $i -lt $ousRoot.Length; $i++) {
         $plus = $i + 1
         $nameOU = $ousRoot[$i].Name
-        Write-Host "$plus - $nameOU"
+        Write-Host "$plus) $nameOU"
     }
+    $plusPlas = $plus + 1
+    Write-Host "$plusPlas) Volver Al Menu"
     Write-Host ""
     $option = Read-Host "Ingrese Valor"
-    $plus = $option - 1;
-    $pathOU = $ousRoot[$plus].DistinguishedName
-    $nameOraganizationalSub = $ousRoot[$plus].Name
-    $ousRoot = @(Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $pathOU -SearchScope OneLevel | Select-Object Name, DistinguishedName)
-    if($ousRoot.Length -gt 0) {
-        menuAddUsersSub -path $pathOU -nameOraganizational $nameOraganizationalSub
-    }else {
+    if($option -eq $plusPlas) {
         break
+        menuMain
+    }else {
+        $plus = $option - 1;
+        $pathOU = $ousRoot[$plus].DistinguishedName
+        $nameOraganizationalSub = $ousRoot[$plus].Name
+        $ousRoot = @(Get-ADOrganizationalUnit -LDAPFilter '(name=*)' -SearchBase $pathOU -SearchScope OneLevel | Select-Object Name, DistinguishedName)
+        if($ousRoot.Length -gt 0) {
+            $global:pathSelected = $pathOU
+            $global:nameOrganizational = $nameOraganizationalSub
+            menuAddUsersSub -path $pathOU -nameOraganizational $nameOraganizationalSub
+        }else {
+            $global:pathSelected = $pathOU
+            $global:nameOrganizational = $nameOraganizationalSub
+            break
+        }
     }
+}
+function selectOU {
+    param ($pathOU, $nameOU)
+    Clear-Host
+    Write-Host "=================================================="
+    Write-Host "|                Crear Usuarios                  |"
+    Write-Host "=================================================="
+    Write-Host ""
+    Write-Host "Ha Seleccionado la Unidad Organizativa '" $nameOU "'"
+    Write-Host "Se crearan los usuarios en la OU : '" $global:pathSelected "'" 
+    Write-Host ""
+    pause
 }
 
 #Importarcion de Active Directory
@@ -82,7 +117,7 @@ while (($option = Read-Host -Prompt "Ingrese Valor") -ne "6") {
     switch ($option) {
         1 {
             menuAddUsers
-            Pause
+            selectOU -pathOU $global:pathSelected -nameOU $global:nameOrganizational
             break
         }
         2 {
