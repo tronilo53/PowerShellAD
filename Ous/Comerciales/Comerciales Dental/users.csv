@@ -1,2 +1,2 @@
-FirstName;LastName;SamAccountName;Department;JobTitle;Password
-Jaime;Martinez;jaime.martinez;Comercial;Comercial PAM Canarias;!!Comercial2024!!
+FirstName;LastName;SamAccountName;Department;JobTitle;Office;Company;Description;Manager;Password;Upn
+Pablo;Ferrer;pablo.ferrer;Ventas;Comercial PAM Canarias;Canarias;Henry Schein Spain;Comercial PAM Canarias;jaime.martinez;!!Comercial2024!!;henryschein.es

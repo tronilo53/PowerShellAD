@@ -1,3 +1,6 @@
+#Importarcion de Active Directory
+Import-Module ActiveDirectory
+
 $global:pathSelected = ""
 $global:pathSelectedFormat = ""
 $global:nameOrganizational = ""
@@ -102,14 +105,81 @@ function selectOU {
     Write-Host "|                Crear Usuarios                  |"
     Write-Host "=================================================="
     Write-Host ""
-    Write-Host "Ha Seleccionado la Unidad Organizativa '" $nameOU "'"
-    Write-Host "Se crearan los usuarios en la OU : '" $global:pathSelected "'" 
+    Write-Host "Ha Seleccionado la Unidad Organizativa '"$nameOU"'"
     Write-Host ""
-    pause
+    $newPathFile = @("Ous")
+    $canonical = @(Get-ADOrganizationalUnit -Properties CanonicalName -Filter * | Sort-Object CanonicalName | Select-Object CanonicalName, DistinguishedName)
+    foreach($can in $canonical) {
+        if($can.DistinguishedName -eq $pathOU) {
+            $pathFile = @($can.CanonicalName -split "/")
+            foreach($path in $pathFile) {
+                if($path -ne "eu.hsi.local" -and $path -ne "ES" -and $path -ne "Usuarios Henry Schein SPAIN") {
+                    $newPathFile = $newPathFile += $path
+                }
+            }
+            Write-Host ""
+            $joinedNewPath = $newPathFile -join "/"
+            $pathComplete = $joinedNewPath + "/users.csv"
+            Write-Host "*Se ejecutara el archivo de la ruta: '"$pathComplete"'"
+            Write-Host ""
+        }
+    }
+    $response = Read-Host "Quiere continuar con la ejecucion del script? [S=Si N=No]"
+    switch ($response) {
+        'S' {
+            Write-Host "Creando Usuarios..."
+            addUsers -path $pathComplete -pathOU $pathOU
+            pause
+            break
+        }
+        'N' {
+            Write-Host "Saliendo al menu principal"
+            pause
+            break
+        }
+        Default {
+            Write-Host -ForegroundColor red -BackgroundColor white "Valor no valido, Por favor, ingrese un valor valido"
+            Pause
+            selectOU -pathOU $pathOU -nameOU $nameOU
+        }
+    }
 }
-
-#Importarcion de Active Directory
-Import-Module ActiveDirectory
+function addUsers {
+    param ($path, $pathOU)
+    $pathNew = "./" + $path
+    $users = Import-Csv $pathNew -Delimiter ";"
+    foreach($user in $users) {
+        if(Get-ADuser -Filter {SamAccountName -eq $user.SamAccountName}) {
+            Write-Warning "La cuenta '"$user.SamAccountName"' Ya existe y no se creara"
+        }else {
+            try {
+                $upn = $user.SamAccountName + "@" + $user.Upn
+                $uname = $user.LastName + ", " + $user.FirstName
+                $manager = Get-ADuser -Identity $user.Manager | Select-Object DistinguishedName
+                New-ADUser -Name $uname `
+                -DisplayName $uname `
+                -GivenName $user.FirstName `
+                -Surname $user.LastName `
+                -Department $user.Department `
+                -Title $user.JobTitle `
+                -UserPrincipalName $upn `
+                -SamAccountName $user.SamAccountName `
+                -Company $user.Company `
+                -Office $user.Office `
+                -Manager $manager[0].DistinguishedName `
+                -Path $pathOU `
+                -EmailAddress $upn `
+                -Description $user.Description `
+                -AccountPassword (ConvertTo-SecureString $user.Password -AsPlainText -Force) -Enabled $true -ChangePasswordAtLogon $false -PasswordNeverExpires $false -Verbose
+                Set-ADuser -Identity $user.SamAccountName -Replace @{'msDS-cloudExtensionAttribute10'='EMEAAdministration'}
+                Write-Host -ForegroundColor Green -BackgroundColor White "Usuario Creado correctamente"
+            }
+            catch {
+                Write-Warning "Error al crear el usuario: '"$user.SamAccountName"' Error: "$error[0]
+            }
+        }
+    }
+}
 
 menuMain
 
