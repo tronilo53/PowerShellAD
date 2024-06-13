@@ -149,14 +149,32 @@ function addUsers {
     $pathNew = "./" + $path
     $users = Import-Csv $pathNew -Delimiter ";"
     foreach($user in $users) {
-        if(Get-ADuser -Filter {SamAccountName -eq $user.SamAccountName}) {
-            Write-Warning "La cuenta '"$user.SamAccountName"' Ya existe y no se creara"
+        $samAccountName = $user.nombre + "." + $user.apellidos
+        if(Get-ADuser -Filter {SamAccountName -eq $samAccountName}) {
+            Write-Warning "La cuenta '"$samAccountName"' Ya existe y no se creara"
         }else {
             try {
-                $samAccountName = $user.nombre + "." + $user.apellidos
                 $userPrincipalName = $user.SamAccountName + "@" + $user.Upn
                 $uname = $user.apellidos + ", " + $user.nombre
                 $manager = Get-ADuser -Identity $user.manager | Select-Object DistinguishedName
+                $object = @{
+                    Name = $uname
+                    DisplayName = $uname
+                    GivenName = $user.nombre
+                    Surname = $user.apellidos
+                    Department = $user.departamento
+                    Title = $user.puestoTrabajo
+                    UserPrincipalName = $userPrincipalName
+                    SamAccountName = $samAccountName
+                    Company = $user.compania
+                    Office = $user.oficina
+                    Manager = $manager[0].DistinguishedName
+                    Path = $pathOU
+                    EmailAddress = $userPrincipalName
+                    Description = $user.puestoTrabajo
+                    AccountPassword = $user.contrasena
+                }
+                <#
                 New-ADUser -Name $uname `
                 -DisplayName $uname `
                 -GivenName $user.nombre `
@@ -174,9 +192,11 @@ function addUsers {
                 -AccountPassword (ConvertTo-SecureString $user.contrasena -AsPlainText -Force) -Enabled $true -ChangePasswordAtLogon $false -PasswordNeverExpires $false -Verbose
                 Set-ADuser -Identity $samAccountName -Replace @{'extensionAttribute10'='EMEAadministration'}
                 Write-Host -ForegroundColor Green -BackgroundColor White "Usuario Creado correctamente"
+                #>
+                Write-Warning $object
             }
             catch {
-                Write-Warning "Error al crear el usuario: '"$user.SamAccountName"' Error: "$error[0]
+                Write-Warning "Error al crear el usuario: '"$samAccountName"' Error: "$error[0]
             }
         }
     }
